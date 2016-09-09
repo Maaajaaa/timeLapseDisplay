@@ -3,9 +3,11 @@ from time import sleep
 class timeLapseMenu:
     currentItem = 0
     mode = 0
+    debug = False
     def __init__(self, theItems, theChoices, theLcd):
         self.items =theItems
         self.choices = theChoices
+        self.debug = False
         if len(self.choices) != len(self.items):
             print('choices list does not fit the items list')
         self.lcd = theLcd
@@ -31,7 +33,7 @@ class timeLapseMenu:
             self.printItem(next_Item)
         #Value Mode
         else:
-            print('setting value -')
+            if self.debug: print('setting value -')
             self.setItemValue(currentItem, -1)
             #update the display
             self.printItem(currentItem)
@@ -48,18 +50,18 @@ class timeLapseMenu:
             self.printItem(next_Item)
         #Value Mode
         else:
-            print('setting value +')
+            if self.debug: print('setting value +')
             self.setItemValue(currentItem, 1)
             #update the display
             self.printItem(currentItem)
 
     def goDown(self):
         global mode
-        if mode > 1:  #if setting a value
-            print('in set mode, going to the next value (right)')
+        if mode >= 1:  #if setting a value
+            if self.debug: print('in set mode, going to the next value (right)')
             mode = mode + 1
         else:
-            print('going down into set mode')
+            if self.debug: print('going down into set mode')
             #"delete" arrows
             self.lcd.cursor_pos = (0,0)
             self.lcd.write_string(' ')
@@ -69,18 +71,18 @@ class timeLapseMenu:
 
     def goBack(self):
         global mode
-        if mode > 1:
+        if mode >= 1:
             mode = mode - 1
 
     def goUp(self):
-        global mode, currentItem
+        global mode, currentItem, debug
         if mode >= 1:
-            print('going into menu mode')
+            if self.debug: print('going into menu mode')
             self.lcd.cursor_pos = (0,0)
             self.lcd.write_string(self.items[currentItem])
             mode = 0
         if mode == 0:
-            print('already in menu mode')
+            if self.debug: print('already in menu mode')
 
     def printItem(self, itemID):
         self.lcd.cursor_pos = (0,0)

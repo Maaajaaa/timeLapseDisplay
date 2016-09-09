@@ -49,15 +49,15 @@ def quitButton(channel):
         menu.goUp()
         global quitButtonPressTime
         quitButtonPressTime = time()
-        print("Pressed at", quitButtonPressTime)
+        if debug: print("Pressed at", quitButtonPressTime)
     else:
         #released
-        print("Released")
+        if debug: print("Released")
         if quitButtonPressTime <= time() - 3: #at least 3 seconds helt before release
             exit()
         else:
-            print("hold the button at least 2 seconds to quit the app")
-            print("you pressed: ", time() - quitButtonPressTime)
+            if debug: print("hold the button at least 2 seconds to quit the app")
+            if debug: print("you pressed: ", time() - quitButtonPressTime)
 
 def leftButton(channel):
     if debug: print('< button pressed')
