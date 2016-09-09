@@ -34,7 +34,8 @@ previewOnStartup = False
 quitButtonPressTime = time()
 
 #-----------------------MENU-----------------------------------
-menuItems = ['    Duration   >', '<   Interval   >', '< save raw data ']
+menuItems = ['    Duration   >', '<   Interval   >', '< save raw data>']
+# name, [min, step, max, default/current]
 menuChoices = [ ['hrs', [1,1,48,3]], ['sec', [0.5,0.5,60,1]], ['yes/no', [0,1,1,1]] ]
 menu = lcdMenu.timeLapseMenu(menuItems, menuChoices,lcd)
  #0123456789abcdef0123456789abcdef

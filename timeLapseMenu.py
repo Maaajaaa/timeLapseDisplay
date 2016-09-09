@@ -21,21 +21,37 @@ class timeLapseMenu:
 
     def goLeft(self):
         global currentItem
-        if currentItem == 0:
-            next_Item = len(self.items) - 1
+        #Menu Mode
+        if mode == 0:
+            if currentItem == 0:
+                next_Item = len(self.items) - 1
+            else:
+                next_Item = currentItem - 1
+            currentItem = next_Item
+            self.printItem(next_Item)
+        #Value Mode
         else:
-            next_Item = currentItem - 1
-        currentItem = next_Item
-        self.printItem(next_Item)
+            print('setting value -')
+            self.setItemValue(currentItem, -1)
+            #update the display
+            self.printItem(currentItem)
 
     def goRight(self):
         global currentItem
-        if currentItem == len(self.items) - 1:
-            next_Item = 0
+        #Menu Mode
+        if mode == 0:
+            if currentItem == len(self.items) - 1:
+                next_Item = 0
+            else:
+                next_Item = currentItem + 1
+            currentItem = next_Item
+            self.printItem(next_Item)
+        #Value Mode
         else:
-            next_Item = currentItem + 1
-        currentItem = next_Item
-        self.printItem(next_Item)
+            print('setting value +')
+            self.setItemValue(currentItem, 1)
+            #update the display
+            self.printItem(currentItem)
 
     def goDown(self):
         global mode
@@ -58,7 +74,7 @@ class timeLapseMenu:
 
     def goUp(self):
         global mode, currentItem
-        if mode > 1:
+        if mode >= 1:
             print('going into menu mode')
             self.lcd.cursor_pos = (0,0)
             self.lcd.write_string(self.items[currentItem])
@@ -76,3 +92,17 @@ class timeLapseMenu:
         self.lcd.write_string(str(round(self.choices[itemID][1][3],1)))
         self.lcd.cursor_pos = (1,15-len(self.choices[itemID][0]))
         self.lcd.write_string(self.choices[itemID][0])
+
+    def setItemValue(self, itemID, factor):
+        minValue = self.choices[itemID][1][0]
+        #make the step positive or negative depending on factor
+        valueStep = self.choices[itemID][1][1] * factor
+        maxValue = self.choices[itemID][1][2]
+        currentValue = self.choices[itemID][1][3]
+        if currentValue + valueStep <= maxValue and currentValue + valueStep >= minValue:
+            self.choices[itemID][1][3] += valueStep
+        else:
+            if abs(currentValue - maxValue) <= 0.01:
+                self.choices[itemID][1][3] = minValue
+            if abs(currentValue - minValue) <= 0.01:
+                self.choices[itemID][1][3] = maxValue
