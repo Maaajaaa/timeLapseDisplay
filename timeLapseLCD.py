@@ -32,6 +32,10 @@ previewOnStartup = False
 
 #-----------------------TIMING--------------------------------
 quitButtonPressTime = time()
+leftButtonPressTime = time()
+leftButtonPressed = False
+rightButtonPressTime = time()
+rightButtonPressed = False
 
 #-----------------------MENU-----------------------------------
 menuItems = ['    Duration   >', '<   Interval   >', '< save raw data>']
@@ -61,12 +65,26 @@ def quitButton(channel):
             if debug: print("you pressed: ", time() - quitButtonPressTime)
 
 def leftButton(channel):
-    if debug: print('< button pressed')
-    menu.goLeft()
+    global leftButtonPressTime, leftButtonPressed
+    if GPIO.input(18):
+        #pressed
+        leftButtonPressed = True
+        if debug: print('< button pressed')
+        leftButtonPressTime = time()
+        menu.goLeft()
+    else:
+        leftButtonPressed = False
 
 def rightButton(channel):
-    if debug: print('> button pressed')
-    menu.goRight()
+    global rightButtonPressTime, rightButtonPressed
+    if GPIO.input(17):
+        #pressed
+        rightButtonPressed = True
+        if debug: print('> button pressed')
+        rightButtonPressTime = time()
+        menu.goRight()
+    else:
+        rightButtonPressed = False
 
 def downButton(channel):
     if debug: print('back button pressed')
@@ -80,16 +98,21 @@ def enterButton(channel):
 GPIO.setup([23,18,17,22,27], GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 GPIO.add_event_detect(23, GPIO.BOTH, callback=quitButton)
-GPIO.add_event_detect(18, buttonEdge, callback=leftButton, bouncetime=300)
-GPIO.add_event_detect(17, buttonEdge, callback=rightButton, bouncetime=300)
+GPIO.add_event_detect(18, GPIO.BOTH, callback=leftButton, bouncetime=300)
+GPIO.add_event_detect(17, GPIO.BOTH, callback=rightButton, bouncetime=300)
 GPIO.add_event_detect(22, buttonEdge, callback=downButton, bouncetime=300)
 GPIO.add_event_detect(27, buttonEdge, callback=enterButton, bouncetime=300)
 
 
 try:
     print('Running...')
+    global leftButtonPressed, leftButtonPressTime
     while(1):
-        sleep(60)
+        if leftButtonPressed and time() - leftButtonPressTime >= 0.2:
+            leftButton(True)
+        if rightButtonPressed and time() - rightButtonPressTime >= 0.2:
+            rightButton(True)
+        sleep(0.1)
 except (KeyboardInterrupt, SystemExit):
     lcd.clear()
     GPIO.cleanup()       # clean up GPIO on CTRL+C exit
