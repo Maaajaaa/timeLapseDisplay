@@ -18,7 +18,7 @@ GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 buttonEdge = GPIO.FALLING #FALLING: relase trigger, RISING: press trigger
 
-debug = False #show pressed buttons
+debug = True #show pressed buttons
 
 # Initialize display. All values have default values and are therefore
 # optional.
@@ -35,8 +35,9 @@ quitButtonPressTime = time()
 
 #-----------------------MENU-----------------------------------
 menuItems = ['    Duration   >', '<   Interval   >', '< save raw data>']
-# name, [min, step, max, default/current]
-menuChoices = [ ['hrs', [1,1,48,3]], ['sec', [0.5,0.5,60,1]], ['yes/no', [0,1,1,1]] ]
+# name, [min, step, max, default/current] (for float/int values)
+# name, [possibleString1, possibleString2, ...] (for string values)
+menuChoices = [ ['hrs', [1,1,48,3]], ['sec', [0.5,0.5,60,1]], ['', ['Yes','No', 0]] ]
 menu = lcdMenu.timeLapseMenu(menuItems, menuChoices,lcd)
  #0123456789abcdef0123456789abcdef
 #'< save raw data>'
