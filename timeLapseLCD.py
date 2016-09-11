@@ -18,7 +18,7 @@ GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 buttonEdge = GPIO.FALLING #FALLING: relase trigger, RISING: press trigger
 
-debug = True #show pressed buttons
+debug = False #show pressed buttons
 
 # Initialize display. All values have default values and are therefore
 # optional.
@@ -38,13 +38,15 @@ rightButtonPressTime = time()
 rightButtonPressed = False
 
 #-----------------------MENU-----------------------------------
-menuItems = ['    Duration   >', '<   Interval   >', '< save raw data>']
+def startTest(channel = True): print('start')
+menuItems = ['    Duration   >', '<   Interval   >', '< save raw data>', '< start lapse   ']
 # name, [min, step, max, default/current] (for float/int values)
 # name, [possibleString1, possibleString2, ...] (for string values)
-menuChoices = [ ['hrs', [1,1,48,3]], ['sec', [0.5,0.5,60,1]], ['', ['Yes','No', 0]] ]
+# name, [actionString, function] (for calling (a) function)
+menuChoices = [ ['hrs', [1,1,48,3]], ['sec', [0.5,0.5,60,1]], ['', ['Yes','No', 0]], ['', ['I\'m ready', startTest]] ]
 menu = lcdMenu.timeLapseMenu(menuItems, menuChoices,lcd)
  #0123456789abcdef0123456789abcdef
-#'< save raw data>'
+#
 menu.home()
 
 #--------------------INTERRUPTS (buttons)--------------------

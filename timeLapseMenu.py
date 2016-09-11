@@ -97,15 +97,18 @@ class timeLapseMenu:
 
         self.lcd.cursor_pos = (1,0)
         if type(self.choices[itemID][1][0]) is str:
-            currentElementID = len(self.choices[2][1]) - 1
-            self.lcd.write_string(self.choices[itemID][1][self.choices[itemID][1][currentElementID]])
+            if type(self.choices[itemID][1][1]) is str:
+                currentElementID = len(self.choices[2][1]) - 1
+                self.lcd.write_string(self.choices[itemID][1][self.choices[itemID][1][currentElementID]])
+            if callable(self.choices[itemID][1][1]):
+                self.lcd.write_string(self.choices[itemID][1][0])
         else:
             self.lcd.write_string(str(round(self.choices[itemID][1][3],1)))
         self.lcd.cursor_pos = (1,15-len(self.choices[itemID][0]))
         self.lcd.write_string(self.choices[itemID][0])
 
     def setItemValue(self, itemID, factor):
-        if type(self.choices[itemID][1][0]) is str:
+        if type(self.choices[itemID][1][1]) is str:
             lastStringElement = len(self.choices[itemID][1]) - 2
             currentElement = self.choices[itemID][1][lastStringElement + 1]
             if currentElement + factor <= lastStringElement   and currentElement + factor >= 0:
@@ -116,16 +119,19 @@ class timeLapseMenu:
                 if currentElement + factor > lastStringElement:
                     self.choices[itemID][1][lastStringElement + 1] = 0
 
-        else:
-            minValue = self.choices[itemID][1][0]
-            #make the step positive or negative depending on factor
-            valueStep = self.choices[itemID][1][1] * factor
-            maxValue = self.choices[itemID][1][2]
-            currentValue = self.choices[itemID][1][3]
-            if currentValue + valueStep <= maxValue and currentValue + valueStep >= minValue:
-                self.choices[itemID][1][3] += valueStep
-            else:
-                if abs(currentValue - maxValue) <= 0.01:
-                    self.choices[itemID][1][3] = minValue
-                if abs(currentValue - minValue) <= 0.01:
-                    self.choices[itemID][1][3] = maxValue
+        if type(self.choices[itemID][1][1]) is int or type(self.choices[itemID][1][1]) is float:
+                minValue = self.choices[itemID][1][0]
+                #make the step positive or negative depending on factor
+                valueStep = self.choices[itemID][1][1] * factor
+                maxValue = self.choices[itemID][1][2]
+                currentValue = self.choices[itemID][1][3]
+                if currentValue + valueStep <= maxValue and currentValue + valueStep >= minValue:
+                    self.choices[itemID][1][3] += valueStep
+                else:
+                    if abs(currentValue - maxValue) <= 0.01:
+                        self.choices[itemID][1][3] = minValue
+                    if abs(currentValue - minValue) <= 0.01:
+                        self.choices[itemID][1][3] = maxValue
+
+        if callable(self.choices[itemID][1][1]):
+            self.choices[itemID][1][1]()
