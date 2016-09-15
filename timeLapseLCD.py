@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-#minmum version: Python 3.4 
+#minmum version: Python 3.4
 import threading
 import RPi.GPIO as GPIO
 from time import sleep, monotonic as time
 import RPLCD
-from os import statvfs
+from os import statvfs, listdir
 from picamera import PiCamera
 from sys import exit
 import timeLapseMenu as lcdMenu
+import string
+import re
+
 
 #-------------------------DIR-&-FREE-STORAGE----------------------
 pictureDir = '/home/pi/Pictures/TimeLapse/'
@@ -43,7 +46,7 @@ rightButtonPressTime = time()
 rightButtonPressed = False
 
 #-----------------------MENU-----------------------------------
-def startTest(duration, interval, raw):
+def startTimeLapse(duration, interval, raw):
     amountOfPictures = int(duration * 60 * 60 / interval)
     if(raw):
         estSize = 10.0
@@ -55,12 +58,17 @@ def startTest(duration, interval, raw):
     str(int(amountOfPictures * estSize/freeSpace*100))+ '% ' +
     str(round(amountOfPictures / 30,1)))
     camera.start_preview()
-    fileName = 'image{0:0' + str(digits(amountOfPictures)) + 'd}.jpg'
+    prefix = findPossibleFilePrefix(pictureDir)
+    if prefix == False :
+        lcd.clear()
+        lcd.write_string('ERROR: No possible prefix found')
+        exit()
+    fileName = prefix + 'image{0:0' + str(digits(amountOfPictures)) + 'd}.jpg'
     sleep(5)
     for pic in range(0,amountOfPictures):
         lcd.clear()
-        lcd.write_string(str(pic) + '/' + str(amountOfPictures) + ' ' + str(round(pic / amountOfPictures * 100,1)) + '%')
-        lcd.write_string('\r\n' + str(int((amountOfPictures - pic) * interval / 60))  + 'min ')
+        lcd.write_string(str(pic + 1) + '/' + str(amountOfPictures) + ' ' + str(round(pic + 1 / amountOfPictures * 100,1)) + '%')
+        lcd.write_string('\r\n' + str(int((amountOfPictures - pic + 1) * interval / 60))  + 'min ')
         camera.capture(pictureDir + fileName.format(pic), format=pictureFormat, bayer=raw)
         sleep(interval)
     lcd.clear()
@@ -70,7 +78,7 @@ menuItems = ['    Duration   >', '<   Interval   >', '< save raw data>', '< star
 # unit, [min, step, max, default/current] (for float/int values)
 # unit, [possibleString1, possibleString2, ...] (for string values)
 # unit, [actionString, function] (for calling (a) function)
-menuChoices = [ ['hrs', [1,1,48,1]], ['sec', [0.5,2,120,30]], ['', ['Yes','No', 0]], ['', ['I\'m ready', startTest]] ]
+menuChoices = [ ['hrs', [1,1,48,1]], ['sec', [2,2,120,30]], ['', ['Yes','No', 0]], ['', ['I\'m ready', startTimeLapse]] ]
 menu = lcdMenu.timeLapseMenu(menuItems, menuChoices,lcd)
  #0123456789abcdef0123456789abcdef
 #
@@ -138,9 +146,20 @@ def digits(n):
         x += 1
     return x
 
+def findPossibleFilePrefix(filesdir):
+    #put files in one string
+    files = ''.join(item + ' ' for item in listdir(filesdir))
+    #check allowed prefixes
+    for i in range(0,len(string.ascii_letters)):
+        prefix = string.ascii_letters[i]
+        chexpression = re.compile(prefix + '\d*\.jpg')
+        if chexpression.findall(files) == []:
+            return prefix
+    return False
 try:
     print('Running...')
-    global leftButtonPressed, leftButtonPressTime
+    findPossibleFilePrefix(pictureDir)
+    #global leftButtonPressed, leftButtonPressTime
     while(1):
         if leftButtonPressed and time() - leftButtonPressTime >= 0.2:
             leftButton(True)
