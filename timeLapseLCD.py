@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#minmum version: Python 3.4 
 import threading
 import RPi.GPIO as GPIO
 from time import sleep, monotonic as time
@@ -30,6 +31,10 @@ camera = PiCamera()
 previewOnStartup = True
 if previewOnStartup == True: camera.start_preview()
 
+#Camera Settings
+pictureFormat = 'jpeg'
+camera.resolution = (2592, 1944)
+
 #-----------------------TIMING--------------------------------
 quitButtonPressTime = time()
 leftButtonPressTime = time()
@@ -42,17 +47,14 @@ def startTest(duration, interval, raw):
     amountOfPictures = int(duration * 60 * 60 / interval)
     if(raw):
         estSize = 10.0
-        pictureFormat = 'rgba'
     else:
         estSize = 4.5
-        pictureFormat = 'jpeg'
     print('starting time-lapse')
     lcd.clear()
     lcd.write_string('Timelapsing\n\r'+ str(amountOfPictures) + ' ' +
     str(int(amountOfPictures * estSize/freeSpace*100))+ '% ' +
     str(round(amountOfPictures / 30,1)))
     camera.start_preview()
-    camera.resolution = (2592, 1944)
     fileName = 'image{0:0' + str(digits(amountOfPictures)) + 'd}.jpg'
     sleep(5)
     for pic in range(0,amountOfPictures):
