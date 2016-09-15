@@ -134,4 +134,10 @@ class timeLapseMenu:
                         self.choices[itemID][1][3] = maxValue
 
         if callable(self.choices[itemID][1][1]):
-            self.choices[itemID][1][1]()
+            duration = self.choices[0][1][3]
+            interval = self.choices[1][1][3]
+            if self.choices[2][1][2] == 0:
+                raw = True
+            else:
+                raw = False
+            self.choices[itemID][1][1](duration, interval, raw)

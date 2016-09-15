@@ -9,7 +9,7 @@ from sys import exit
 import timeLapseMenu as lcdMenu
 
 #-------------------------DIR-&-FREE-STORAGE----------------------
-pictureDir = '/'
+pictureDir = '/home/pi/Pictures/TimeLapse/'
 st = statvfs(pictureDir)
 freeSpace =  st.f_bavail * st.f_frsize / 1024 / 1024 #in MB
 
@@ -26,9 +26,9 @@ lcd = RPLCD.CharLCD(pin_rs=7, pin_rw=None, pin_e=8, pins_data=[11, 24, 25, 4],
               numbering_mode=GPIO.BCM, cols=16, rows=2, dotsize=8)
 
 #------------------------CAMERA---------------------------
-#camera = PiCamera()
-previewOnStartup = False
-#if previewOnStartup: camera.start_preview()
+camera = PiCamera()
+previewOnStartup = True
+if previewOnStartup == True: camera.start_preview()
 
 #-----------------------TIMING--------------------------------
 quitButtonPressTime = time()
@@ -38,12 +38,37 @@ rightButtonPressTime = time()
 rightButtonPressed = False
 
 #-----------------------MENU-----------------------------------
-def startTest(channel = True): print('start')
+def startTest(duration, interval, raw):
+    amountOfPictures = int(duration * 60 * 60 / interval)
+    if(raw):
+        estSize = 10.0
+        pictureFormat = 'rgba'
+    else:
+        estSize = 4.5
+        pictureFormat = 'jpeg'
+    print('starting time-lapse')
+    lcd.clear()
+    lcd.write_string('Timelapsing\n\r'+ str(amountOfPictures) + ' ' +
+    str(int(amountOfPictures * estSize/freeSpace*100))+ '% ' +
+    str(round(amountOfPictures / 30,1)))
+    camera.start_preview()
+    camera.resolution = (2592, 1944)
+    fileName = 'image{0:0' + str(digits(amountOfPictures)) + 'd}.jpg'
+    sleep(5)
+    for pic in range(0,amountOfPictures):
+        lcd.clear()
+        lcd.write_string(str(pic) + '/' + str(amountOfPictures) + ' ' + str(round(pic / amountOfPictures * 100,1)) + '%')
+        lcd.write_string('\r\n' + str(int((amountOfPictures - pic) * interval / 60))  + 'min ')
+        camera.capture(pictureDir + fileName.format(pic), format=pictureFormat, bayer=raw)
+        sleep(interval)
+    lcd.clear()
+    lcd.write_string('done.')
+    exit()
 menuItems = ['    Duration   >', '<   Interval   >', '< save raw data>', '< start lapse   ']
-# name, [min, step, max, default/current] (for float/int values)
-# name, [possibleString1, possibleString2, ...] (for string values)
-# name, [actionString, function] (for calling (a) function)
-menuChoices = [ ['hrs', [1,1,48,3]], ['sec', [0.5,0.5,60,1]], ['', ['Yes','No', 0]], ['', ['I\'m ready', startTest]] ]
+# unit, [min, step, max, default/current] (for float/int values)
+# unit, [possibleString1, possibleString2, ...] (for string values)
+# unit, [actionString, function] (for calling (a) function)
+menuChoices = [ ['hrs', [1,1,48,1]], ['sec', [0.5,2,120,30]], ['', ['Yes','No', 0]], ['', ['I\'m ready', startTest]] ]
 menu = lcdMenu.timeLapseMenu(menuItems, menuChoices,lcd)
  #0123456789abcdef0123456789abcdef
 #
@@ -105,6 +130,11 @@ GPIO.add_event_detect(17, GPIO.BOTH, callback=rightButton, bouncetime=300)
 GPIO.add_event_detect(22, buttonEdge, callback=downButton, bouncetime=300)
 GPIO.add_event_detect(27, buttonEdge, callback=enterButton, bouncetime=300)
 
+def digits(n):
+    x = 0
+    while n >= 10**x:
+        x += 1
+    return x
 
 try:
     print('Running...')
