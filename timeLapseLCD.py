@@ -63,7 +63,7 @@ def startTimeLapse(duration, interval, raw):
         lcd.clear()
         lcd.write_string('ERROR: No possible prefix found')
         exit()
-    fileName = prefix + 'image{0:0' + str(digits(amountOfPictures)) + 'd}.jpg'
+    fileName = prefix + '{0:0' + str(digits(amountOfPictures)) + 'd}.jpg'
     sleep(5)
     for pic in range(0,amountOfPictures):
         lcd.clear()
