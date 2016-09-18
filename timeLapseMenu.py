@@ -4,19 +4,71 @@ class timeLapseMenu:
     currentItem = 0
     mode = 0
     debug = False
-    def __init__(self, theItems, theChoices, theLcd):
+    width = 128
+    height = 64
+
+    def drawBuffer(self):
+        # Draw the image buffer.
+        self.disp.image(self.image)
+        self.disp.display()
+
+    def clearBuffer(self):
+        # Clear image buffer by drawing a black filled box.
+        global width, height
+        self.draw.rectangle((0,0,width,height), outline=0, fill=0)
+        self.nextX = [0,0]
+
+    def writeStringToBuffer(self, line, text, instantDisplay = False, aligment = 'left', arrows = (False, False)):
+        global width, height
+        effectiveWidth = width
+        textWidth, textHeight = self.draw.textsize(text, font=self.font)
+        if arrows[0]:
+            effectiveWidth -= self.draw.textsize('<', font=self.font)[0]
+            self.nextX[line] = self.draw.textsize('< ', font=self.font)[0]
+            self.draw.text( (0, line * (textHeight + 5) ), '<', font=self.font, fill=255)
+        if arrows[1]:
+            effectiveWidth -= self.draw.textsize('>', font=self.font)[0]
+            self.draw.text( (width - self.draw.textsize('>', font=self.font)[0], line * (textHeight + 5) ), '>', font=self.font, fill=255)
+        if aligment == 'centered':
+            self.draw.text(((width - textWidth) / 2, line * (textHeight + 5)), text, font=self.font, fill=255)
+            self.nextX[line] += (width - textWidth) / 2 + self.draw.textsize(text, font=self.font)[0]
+        elif aligment == 'left':
+            self.draw.text((0, line * (textHeight + 5)), text, font=self.font, fill=255)
+            self.nextX[line] += self.draw.textsize(text, font=self.font)[0]
+        elif aligment == 'next':
+            self.draw.text((nextX[line], line * (textHeight + 5)), text, font=self.font, fill=255)
+            self.nextX[line] += self.draw.textsize(text, font=self.font)[0]
+        elif aligment == 'right':
+            self.draw.text((width-textWidth, line * (textHeight + 5)), text, font=self.font, fill=255)
+        if instantDisplay:
+            self.drawBuffer()
+
+    def clearDisplay(self):
+        self.clearBuffer()
+        self.drawBuffer()
+
+    def __init__(self, theItems, theChoices, theDisplay, theDrawObject, theImage, theFont):
+        global width, height
         self.items =theItems
         self.choices = theChoices
-        self.debug = False
+        self.font = theFont
+        self.image = theImage
+        self.debug = True
         if len(self.choices) != len(self.items):
             print('choices list does not fit the items list')
-        self.lcd = theLcd
-        self.lcd.clear()      #0123456789abcdef0123456789abcdef
-        self.lcd.write_string(' TimeLapsePhoto  Control  Panel ')
+        self.disp = theDisplay
+        self.draw = theDrawObject
+        self.nextX = [0,0]
+        width = self.disp.width
+        height = self.disp.height
+        #self.lcd = theLcd
+        #self.lcd.clear()      #0123456789abcdef0123456789abcdef
+        self.writeStringToBuffer(0, 'TimeLapsePhoto', aligment = 'centered')
+        self.writeStringToBuffer(1, 'Control Panel', instantDisplay = True, aligment = 'centered')
 
     def home(self):
         global currentItem, mode
-        self.lcd.clear()
+        #self.lcd.clear()
         self.printItem(0)
         currentItem = 0
         mode = 0
@@ -59,14 +111,11 @@ class timeLapseMenu:
         global mode
         if mode >= 1:  #if setting a value
             if self.debug: print('in set mode, going to the next value (right)')
-            mode = mode + 1
+            mode = 0
         else:
             if self.debug: print('going down into set mode')
             #"delete" arrows
-            self.lcd.cursor_pos = (0,0)
-            self.lcd.write_string(' ')
-            self.lcd.cursor_pos = (0,15)
-            self.lcd.write_string(' ')
+            self.printItem(currentItem, False)
             mode = 1
 
     def goBack(self):
@@ -78,34 +127,35 @@ class timeLapseMenu:
         global mode, currentItem, debug
         if mode >= 1:
             if self.debug: print('going into menu mode')
-            self.lcd.cursor_pos = (0,0)
-            self.lcd.write_string(self.items[currentItem])
+            self.printItem(currentItem)
             mode = 0
         if mode == 0:
             if self.debug: print('already in menu mode')
 
     def printItem(self, itemID, showArrows = True):
-        self.lcd.clear()
-        self.lcd.cursor_pos = (0,0)
-        if showArrows:
-            self.lcd.cursor_pos = (0,0)
-            self.lcd.write_string(self.items[itemID])
+        self.clearBuffer()
+        if itemID != 0 and showArrows:
+            showLeftArrow = True
         else:
-            self.lcd.cursor_pos = (0,1)
-            arrowlessString = self.items[itemID][1:15]
-            self.lcd.write_string(arrowlessString)
+            showLeftArrow = False
 
-        self.lcd.cursor_pos = (1,0)
+        if itemID == len(self.items) - 1 or showArrows == False:
+            showRightArrow = False
+        else:
+            showRightArrow = True
+
+        self.writeStringToBuffer(0, self.items[itemID], aligment = 'centered', arrows = (showLeftArrow, showRightArrow), instantDisplay=False)
+        #self.lcd.cursor_pos = (1,0)
         if type(self.choices[itemID][1][0]) is str:
             if type(self.choices[itemID][1][1]) is str:
                 currentElementID = len(self.choices[2][1]) - 1
-                self.lcd.write_string(self.choices[itemID][1][self.choices[itemID][1][currentElementID]])
+                self.writeStringToBuffer(1,self.choices[itemID][1][self.choices[itemID][1][currentElementID]], aligment = 'left')
             if callable(self.choices[itemID][1][1]):
-                self.lcd.write_string(self.choices[itemID][1][0])
+                useless = True
+                self.writeStringToBuffer(1,self.choices[itemID][1][0], aligment = 'left')
         else:
-            self.lcd.write_string(str(round(self.choices[itemID][1][3],1)))
-        self.lcd.cursor_pos = (1,15-len(self.choices[itemID][0]))
-        self.lcd.write_string(self.choices[itemID][0])
+            self.writeStringToBuffer(1,str(round(self.choices[itemID][1][3],1)), aligment = 'left')
+        self.writeStringToBuffer(1,self.choices[itemID][0], aligment = 'right', instantDisplay = True)
 
     def setItemValue(self, itemID, factor):
         if type(self.choices[itemID][1][1]) is str:
