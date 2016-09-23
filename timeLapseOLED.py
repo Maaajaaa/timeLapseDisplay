@@ -6,6 +6,8 @@ import re
 from time import sleep, monotonic as time
 from os import statvfs, listdir
 from sys import exit
+import signal
+import sys
 
 import Adafruit_SSD1306
 import RPi.GPIO as GPIO
@@ -28,7 +30,7 @@ GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 buttonEdge = GPIO.FALLING #FALLING: relase trigger, RISING: press trigger
 
-debug = False #show pressed buttons
+debug = True #show pressed buttons
 
 #------------------------------OLED-----------------------------
 
@@ -76,8 +78,8 @@ def clearDisplay():
 
 #------------------------CAMERA---------------------------
 camera = PiCamera()
-previewOnStartup = False
-if previewOnStartup == True: camera.start_preview()
+previewOnStartup = True
+if previewOnStartup: camera.start_preview()
 
 #Camera Settings
 pictureFormat = 'jpeg'
@@ -85,6 +87,7 @@ camera.resolution = (2592, 1944)
 
 #-----------------------TIMING--------------------------------
 quitButtonPressTime = time()
+quitButtonPressed = False
 leftButtonPressTime = time()
 leftButtonPressed = False
 rightButtonPressTime = time()
@@ -102,7 +105,7 @@ def startTimeLapse(duration, interval, raw):
     clearBuffer()
     writeStringToBuffer(0,'Timelapsing')
     writeStringToBuffer(1, str(amountOfPictures) + '\n, est. ' + str(int(amountOfPictures * estSize/freeSpace*100))+ '%')
-    writeStringToBuffer(2, str(round(amountOfPictures / 30,1)) + ' mins@30fps')
+    writeStringToBuffer(2, str(round(amountOfPictures / 30,1)) + ' sec@30fps')
     drawBuffer()
     camera.start_preview()
     prefix = findPossibleFilePrefix(pictureDir)
@@ -121,7 +124,7 @@ def startTimeLapse(duration, interval, raw):
     thirdLineY = 2 * (textHeight + 2)
     for pic in range(0,amountOfPictures):
         clearBuffer()
-        writeStringToBuffer(0, str(pic + 1) + '/' + str(amountOfPictures) + ' ' + str(round(pic + 1 / amountOfPictures * 100,1)) + '%')
+        writeStringToBuffer(0, str(pic + 1) + '/' + str(amountOfPictures) + ' ' + str(round((pic + 1) / amountOfPictures * 100,1)) + '%')
         writeStringToBuffer(1, str(int((amountOfPictures - pic + 1) * interval / 60))  + 'min left')
         drawBuffer()
         camera.capture(pictureDir + fileName.format(pic), format=pictureFormat, bayer=raw)
@@ -154,24 +157,20 @@ menu.home()
 
 #--------------------INTERRUPTS (buttons)--------------------
 def quitButton(channel = False):
-    if GPIO.input(27):
+    global quitButtonPressTime, quitButtonPressed
+    if GPIO.input(17):
         #pressed
-        global quitButtonPressTime
+        quitButtonPressed = True
         quitButtonPressTime = time()
         if debug: print("QUIT Pressed at", quitButtonPressTime)
     else:
         #released
-        if debug: print("QUIT Released")
-        if quitButtonPressTime <= time() - 3: #at least 3 seconds helt before release
-            #raise SystemExit
-            print('Time to quit')
-        else:
-            if debug: print("hold the button at least 2 seconds to quit the app")
-            if debug: print("you pressed: ", time() - quitButtonPressTime)
+        quitButtonPressed = False
+
 
 def leftButton(channel = False):
     global leftButtonPressTime, leftButtonPressed
-    if GPIO.input(17):
+    if GPIO.input(23):
         #pressed
         leftButtonPressed = True
         if debug: print('< button pressed')
@@ -182,7 +181,7 @@ def leftButton(channel = False):
 
 def rightButton(channel = False):
     global rightButtonPressTime, rightButtonPressed
-    if GPIO.input(23):
+    if GPIO.input(4):
         #pressed
         rightButtonPressed = True
         if debug: print('> button pressed')
@@ -207,13 +206,13 @@ def shutdown():
     print(output)
 
 #Quit, Left, Right, Back, Enter Buttons
-GPIO.setup([23,18,17,22,27], GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup([27,23,4,22,17], GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-GPIO.add_event_detect(27, GPIO.BOTH, callback=quitButton, bouncetime=300)
-GPIO.add_event_detect(17, GPIO.BOTH, callback=leftButton, bouncetime=300)
-GPIO.add_event_detect(23, GPIO.BOTH, callback=rightButton, bouncetime=300)
-GPIO.add_event_detect(18, buttonEdge, callback=backButton, bouncetime=300)
-GPIO.add_event_detect(22, buttonEdge, callback=enterButton, bouncetime=300)
+GPIO.add_event_detect(17, GPIO.BOTH, callback=quitButton, bouncetime=300)
+GPIO.add_event_detect(23, GPIO.BOTH, callback=leftButton, bouncetime=300)
+GPIO.add_event_detect(4, GPIO.BOTH, callback=rightButton, bouncetime=300)
+GPIO.add_event_detect(22, buttonEdge, callback=backButton, bouncetime=300)
+GPIO.add_event_detect(27, buttonEdge, callback=enterButton, bouncetime=300)
 
 def digits(n):
     x = 0
@@ -231,22 +230,46 @@ def findPossibleFilePrefix(filesdir):
         if chexpression.findall(files) == []:
             return prefix
     return False
+
+class GracefulKiller:
+  kill_now = False
+  def __init__(self):
+    signal.signal(signal.SIGINT, self.exit_gracefully)
+    signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+  def exit_gracefully(self,signum, frame):
+    self.kill_now = True
+
+#--------------------LOOP--------------------
 try:
     print('Running...')
-    #global leftButtonPressed, leftButtonPressTime
+    killer = GracefulKiller()
     while(1):
         if leftButtonPressed and time() - leftButtonPressTime >= 0.2:
             leftButton()
         if rightButtonPressed and time() - rightButtonPressTime >= 0.2:
             rightButton()
+        if quitButtonPressed and time() - quitButtonPressTime >= 3: #at least 3 seconds helt before release
+            #raise SystemExit
+            print('Time to quit')
+            shutdown()
+            break
+        if killer.kill_now:
+            print('timeLapseOLED died')
+            break
         sleep(0.1)
+
 except (KeyboardInterrupt, SystemExit):
     clearDisplay()
     GPIO.cleanup()       # clean up GPIO on CTRL+C exit
+
 except FileNotFoundError as err:
     print('Error:' + err.message)
     print('Args:' + err.args)
     clearDisplay()
-    GPIO.cleanup()       # clean up GPIO on CTRL+C exit
+    GPIO.cleanup()
+    camera.stop_preview()
+
+camera.stop_preview()
 clearDisplay()
 GPIO.cleanup()

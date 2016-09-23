@@ -3,7 +3,7 @@ from time import sleep
 class timeLapseMenu:
     currentItem = 0
     mode = 0
-    debug = False
+    debug = True
     width = 128
     height = 64
 
