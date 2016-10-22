@@ -96,16 +96,18 @@ rightButtonPressed = False
 #-----------------------MENU-----------------------------------
 def startTimeLapse(duration, interval, raw):
     global font, draw
-    amountOfPictures = int(duration * 60 * 60 / interval)
     if(raw):
         estSize = 10.0
     else:
         estSize = 4.5
-    print('starting time-lapse')
+    amountOfPictures = 100000
     clearBuffer()
-    writeStringToBuffer(0,'Timelapsing')
-    writeStringToBuffer(1, str(amountOfPictures) + '\n, est. ' + str(int(amountOfPictures * estSize/freeSpace*100))+ '%')
-    writeStringToBuffer(2, str(round(amountOfPictures / 30,1)) + ' sec@30fps')
+    if int(interval) != 0:
+        amountOfPictures = int(duration * 60 * 60 / interval)
+        print('starting time-lapse')
+        writeStringToBuffer(0,'Timelapsing')
+        writeStringToBuffer(1, str(amountOfPictures) + '\n, est. ' + str(int(amountOfPictures * estSize/freeSpace*100))+ '%')
+        writeStringToBuffer(2, str(round(amountOfPictures / 30,1)) + ' sec@30fps')
     drawBuffer()
     camera.start_preview()
     prefix = findPossibleFilePrefix(pictureDir)
@@ -128,11 +130,15 @@ def startTimeLapse(duration, interval, raw):
         writeStringToBuffer(1, str(int((amountOfPictures - pic + 1) * interval / 60))  + 'min left')
         drawBuffer()
         camera.capture(pictureDir + fileName.format(pic), format=pictureFormat, bayer=raw)
-        for i in range(0,interval):
-            sleep(1)
-            draw.rectangle((0, thirdLineY, textWidth, thirdLineY+textHeight), fill=0)
-            writeStringToBuffer(2, str(interval-i))
-            drawBuffer()
+        if int(interval) != 0:
+            for i in range(0,interval):
+                sleep(1)
+                draw.rectangle((0, thirdLineY, textWidth, thirdLineY+textHeight), fill=0)
+                writeStringToBuffer(2, str(interval-i))
+                drawBuffer()
+        else:
+            while not GPIO.input(23):
+                sleep(0.01)
 
     clearBuffer()
     font = ImageFont.truetype(fontPath, 50)
@@ -147,11 +153,14 @@ def startTimeLapse(duration, interval, raw):
             drawBuffer()
             shutdown()
 
-menuItems = ['Duration', 'Interval', 'save raw data', 'start lapse']
+def startStopMotion(duration, interval, raw):
+    startTimeLapse(duration, 0, raw)
+
+menuItems = ['Duration', 'Interval', 'save raw data', 'start lapse', 'start stop-motion']
 # unit, [min, step, max, default/current] (for float/int values)
 # unit, [possibleString1, possibleString2, ...] (for string values)
 # unit, [actionString, function] (for calling (a) function)
-menuChoices = [ ['hrs', [1,1,48,1]], ['sec', [2,2,120,30]], ['', ['Yes','No', 0]], ['', ['I\'m ready', startTimeLapse]] ]
+menuChoices = [ ['hrs', [1,1,48,1]], ['sec', [2,2,120,30]], ['', ['Yes','No', 0]], ['', ['I\'m ready', startTimeLapse]], ['', ['I\'m ready', startStopMotion]] ]
 menu = lcdMenu.timeLapseMenu(menuItems, menuChoices, disp, draw, image, font)
 menu.home()
 
