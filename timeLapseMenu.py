@@ -1,4 +1,5 @@
 from time import sleep
+from fractions import Fraction
 
 class timeLapseMenu:
     currentItem = 0
@@ -6,6 +7,7 @@ class timeLapseMenu:
     debug = True
     width = 128
     height = 64
+    classWideCapturing = False
 
     def drawBuffer(self):
         # Draw the image buffer.
@@ -47,12 +49,13 @@ class timeLapseMenu:
         self.clearBuffer()
         self.drawBuffer()
 
-    def __init__(self, theItems, theChoices, theDisplay, theDrawObject, theImage, theFont):
+    def __init__(self, theItems, theChoices, theDisplay, theDrawObject, theImage, theFont, theCamera):
         global width, height
         self.items =theItems
         self.choices = theChoices
         self.font = theFont
         self.image = theImage
+        self.camera = theCamera
         self.debug = True
         if len(self.choices) != len(self.items):
             print('choices list does not fit the items list')
@@ -75,62 +78,65 @@ class timeLapseMenu:
 
     def goLeft(self):
         global currentItem
-        #Menu Mode
-        if mode == 0:
-            if currentItem == 0:
-                next_Item = len(self.items) - 1
+        if not self.classWideCapturing:
+            if mode == 0:
+                if currentItem == 0:
+                    next_Item = len(self.items) - 1
+                else:
+                    next_Item = currentItem - 1
+                currentItem = next_Item
+                self.printItem(next_Item)
+            #Value Mode
             else:
-                next_Item = currentItem - 1
-            currentItem = next_Item
-            self.printItem(next_Item)
-        #Value Mode
-        else:
-            if self.debug: print('setting value -')
-            self.setItemValue(currentItem, -1)
-            #update the display
-            self.printItem(currentItem, False)
+                if self.debug: print('setting value -')
+                self.setItemValue(currentItem, -1)
+                #update the display
+                self.printItem(currentItem, False)
 
     def goRight(self):
         global currentItem
-        #Menu Mode
-        if mode == 0:
-            if currentItem == len(self.items) - 1:
-                next_Item = 0
+        if not self.classWideCapturing:
+            if mode == 0:
+                if currentItem == len(self.items) - 1:
+                    next_Item = 0
+                else:
+                    next_Item = currentItem + 1
+                currentItem = next_Item
+                self.printItem(next_Item)
+            #Value Mode
             else:
-                next_Item = currentItem + 1
-            currentItem = next_Item
-            self.printItem(next_Item)
-        #Value Mode
-        else:
-            if self.debug: print('setting value +')
-            self.setItemValue(currentItem, 1)
-            #update the display
-            self.printItem(currentItem, False)
+                if self.debug: print('setting value +')
+                self.setItemValue(currentItem, 1)
+                #update the display
+                self.printItem(currentItem, False)
 
     def goDown(self):
         global mode
-        if mode >= 1:  #if setting a value
-            if self.debug: print('in set mode, going to the next value (right)')
-            mode = 0
-        else:
-            if self.debug: print('going down into set mode')
-            #"delete" arrows
-            self.printItem(currentItem, False)
-            mode = 1
+        if not self.classWideCapturing:
+            if mode >= 1:
+                if self.debug: print('in set mode, going to the next value (right)')
+                mode = 0
+            else:
+                if self.debug: print('going down into set mode')
+                #"delete" arrows
+                self.printItem(currentItem, False)
+                mode = 1
 
     def goBack(self):
         global mode
-        if mode >= 1:
-            mode = mode - 1
+        if not self.classWideCapturing:
+            if mode >= 1:
+                mode = mode - 1
 
     def goUp(self):
         global mode, currentItem, debug
-        if mode >= 1:
-            if self.debug: print('going into menu mode')
-            self.printItem(currentItem)
-            mode = 0
-        if mode == 0:
-            if self.debug: print('already in menu mode')
+        if not self.classWideCapturing:
+            if mode >= 1:
+                if self.debug: print('going into menu mode')
+                self.printItem(currentItem)
+                mode = 0
+            if mode == 0:
+                if self.debug: print('already in menu mode')
 
     def printItem(self, itemID, showArrows = True):
         self.clearBuffer()
@@ -168,6 +174,9 @@ class timeLapseMenu:
                     self.choices[itemID][1][lastStringElement + 1] = lastStringElement
                 if currentElement + factor > lastStringElement:
                     self.choices[itemID][1][lastStringElement + 1] = 0
+            if itemID == 2:
+                currentStringValue = self.choices[itemID][1][ self.choices[itemID][1][lastStringElement + 1] ]
+                self.camera.shutter_speed = int(float(sum(Fraction(s) for s in currentStringValue.split())) * 10**6)
 
         if type(self.choices[itemID][1][1]) is int or type(self.choices[itemID][1][1]) is float:
                 minValue = self.choices[itemID][1][0]
@@ -190,4 +199,7 @@ class timeLapseMenu:
                 raw = True
             else:
                 raw = False
+            classWideCapturing = True
             self.choices[itemID][1][1](duration, interval, raw)
+    def capturing(self):
+        return self.classWideCapturing

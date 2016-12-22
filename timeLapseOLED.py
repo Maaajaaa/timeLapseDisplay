@@ -4,7 +4,7 @@ import threading
 import string
 import re
 from time import sleep, monotonic as time
-from os import statvfs, listdir
+from os import statvfs, listdir, popen
 from sys import exit
 import signal
 import sys
@@ -17,18 +17,27 @@ from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
 
+import qrcode
+
 import timeLapseMenu as lcdMenu
 
+import socket
+import fcntl
+import struct
 
-#-------------------------DIR-&-FREE-STORAGE----------------------
+#---------------------DIR-&-FREE-STORAGE-&-IP-ADRESS-----------------
 pictureDir = '/home/pi/Pictures/TimeLapse/'
 st = statvfs(pictureDir)
 freeSpace =  st.f_bavail * st.f_frsize / 1024 / 1024 #in MB
+#ipv4 = popen('ip addr show eth1').read().split("inet ")[1].split("/")[0]
+ipv4 = "192.168.178.22"
 
 #---------------------------GPIO---------------------------
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 buttonEdge = GPIO.FALLING #FALLING: relase trigger, RISING: press trigger
+#Quit, Left, Right, Back, Enter Buttons
+GPIO.setup([27,23,4,22,17], GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 debug = True #show pressed buttons
 
@@ -46,7 +55,7 @@ width = disp.width
 height = disp.height
 
 # Create image buffer (1-bit color)
-image = Image.new('1', (width, height))
+image = Image.new('1', (width, height), "white")
 
 # Create drawing object.
 draw = ImageDraw.Draw(image)
@@ -54,8 +63,6 @@ draw = ImageDraw.Draw(image)
 # Load font
 fontPath = '/usr/share/fonts/truetype/gentium-basic/GenBasR.ttf'
 font = ImageFont.truetype(fontPath, 15)
-
-#image = Image.open('/home/pi/Adafruit_Python_SSD1306/examples/happycat_oled_64.ppm').convert('1')
 
 def drawBuffer():
     # Draw the image buffer.
@@ -75,7 +82,24 @@ def clearDisplay():
     clearBuffer()
     drawBuffer()
 
-
+# Create QR-Code and sow it
+qr = qrcode.QRCode(
+    version=1,
+    error_correction=qrcode.constants.ERROR_CORRECT_L,
+    box_size=2,
+    border=5,
+)
+qr.add_data('http://' + ipv4 + '/')
+qr.make(fit=True)
+qrImage = qr.make_image()
+image.paste(qrImage, (0,0))
+image.save("result.png", "PNG")
+disp.image(image)
+drawBuffer()
+GPIO.wait_for_edge(27, buttonEdge)
+GPIO.cleanup(17)
+print(GPIO.VERSION)
+GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 #------------------------CAMERA---------------------------
 camera = PiCamera()
 previewOnStartup = True
@@ -83,7 +107,7 @@ if previewOnStartup: camera.start_preview()
 
 #Camera Settings
 pictureFormat = 'jpeg'
-camera.resolution = (2592, 1944)
+camera.resolution = '2592x1458'
 
 #-----------------------TIMING--------------------------------
 quitButtonPressTime = time()
@@ -101,6 +125,8 @@ def startTimeLapse(duration, interval, raw):
     else:
         estSize = 4.5
     amountOfPictures = 100000
+    camera.shutter_speed = 18868
+    camera.resolution = '2592x1458'
     clearBuffer()
     if int(interval) != 0:
         amountOfPictures = int(duration * 60 * 60 / interval)
@@ -118,7 +144,7 @@ def startTimeLapse(duration, interval, raw):
         drawBuffer()
         raise FileNotFoundError('No possible prefix found', 'in: ' + pictureDir)
     fileName = prefix + '{0:0' + str(digits(amountOfPictures)) + 'd}.jpg'
-    #just for testing REḾOVE IT
+    #just for testing REMOVE IT
     #----------------
     sleep(5)
 
@@ -156,12 +182,12 @@ def startTimeLapse(duration, interval, raw):
 def startStopMotion(duration, interval, raw):
     startTimeLapse(duration, 0, raw)
 
-menuItems = ['Duration', 'Interval', 'save raw data', 'start lapse', 'start stop-motion']
+menuItems = ['Duration', 'Interval', 'Shutter Speed','save raw data', 'start lapse', 'start stop-motion']
 # unit, [min, step, max, default/current] (for float/int values)
 # unit, [possibleString1, possibleString2, ...] (for string values)
 # unit, [actionString, function] (for calling (a) function)
-menuChoices = [ ['hrs', [1,1,48,1]], ['sec', [2,2,120,30]], ['', ['Yes','No', 0]], ['', ['I\'m ready', startTimeLapse]], ['', ['I\'m ready', startStopMotion]] ]
-menu = lcdMenu.timeLapseMenu(menuItems, menuChoices, disp, draw, image, font)
+menuChoices = [ ['hrs', [1,1,48,1]], ['sec', [2,2,120,30]], ['sec', ['1/1000', '1/500','1/250', '1/125', '1/60', '1/60', '1/30', '1/15', '1/8', '1/4', '1/2', '1', '2', '4', 6]], ['', ['Yes','No', 0]], ['', ['I\'m ready', startTimeLapse]], ['', ['I\'m ready', startStopMotion]] ]
+menu = lcdMenu.timeLapseMenu(menuItems, menuChoices, disp, draw, image, font, camera)
 menu.home()
 
 #--------------------INTERRUPTS (buttons)--------------------
@@ -175,7 +201,7 @@ def quitButton(channel = False):
     else:
         #released
         quitButtonPressed = False
-
+        if debug: print("QUIT released at", time())
 
 def leftButton(channel = False):
     global leftButtonPressTime, leftButtonPressed
@@ -184,7 +210,8 @@ def leftButton(channel = False):
         leftButtonPressed = True
         if debug: print('< button pressed')
         leftButtonPressTime = time()
-        menu.goLeft()
+        if not menu.capturing():
+            menu.goLeft()
     else:
         leftButtonPressed = False
 
@@ -213,9 +240,6 @@ def shutdown():
     process = subprocess.Popen(command.split(), stdout=subprocess.PIPE)
     output = process.communicate()[0]
     print(output)
-
-#Quit, Left, Right, Back, Enter Buttons
-GPIO.setup([27,23,4,22,17], GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 GPIO.add_event_detect(17, GPIO.BOTH, callback=quitButton, bouncetime=300)
 GPIO.add_event_detect(23, GPIO.BOTH, callback=leftButton, bouncetime=300)
