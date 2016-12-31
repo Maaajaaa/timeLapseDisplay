@@ -76,7 +76,7 @@ class timeLapseMenu:
         currentItem = 0
         mode = 0
 
-    def goLeft(self):
+    def leftPressed(self):
         global currentItem
         if not self.classWideCapturing:
             if mode == 0:
@@ -93,7 +93,7 @@ class timeLapseMenu:
                 #update the display
                 self.printItem(currentItem, False)
 
-    def goRight(self):
+    def rightPressed(self):
         global currentItem
         if not self.classWideCapturing:
             if mode == 0:
@@ -110,10 +110,10 @@ class timeLapseMenu:
                 #update the display
                 self.printItem(currentItem, False)
 
-    def goDown(self):
+    def enterPressed(self):
         global mode
         if not self.classWideCapturing:
-            if mode >= 1:
+            if mode is 1:
                 if self.debug: print('in set mode, going to the next value (right)')
                 mode = 0
             else:
@@ -125,17 +125,17 @@ class timeLapseMenu:
     def goBack(self):
         global mode
         if not self.classWideCapturing:
-            if mode >= 1:
-                mode = mode - 1
+            if mode is 1:
+                mode = 0
 
-    def goUp(self):
+    def backPressed(self):
         global mode, currentItem, debug
         if not self.classWideCapturing:
-            if mode >= 1:
+            if mode is 1:
                 if self.debug: print('going into menu mode')
                 self.printItem(currentItem)
                 mode = 0
-            if mode == 0:
+            elif mode is 0:
                 if self.debug: print('already in menu mode')
 
     def printItem(self, itemID, showArrows = True):
@@ -203,3 +203,7 @@ class timeLapseMenu:
             self.choices[itemID][1][1](duration, interval, raw)
     def capturing(self):
         return self.classWideCapturing
+
+    def getMode(self):
+        global mode
+        return mode
