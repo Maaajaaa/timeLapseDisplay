@@ -37,6 +37,7 @@ GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 buttonEdge = GPIO.FALLING #FALLING: relase trigger, RISING: press trigger
 #Quit, Left, Right, Back, Enter Buttons
+gpioButtons = [27,23,4,22,17]
 GPIO.setup([27,23,4,22,17], GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 debug = True #show pressed buttons
@@ -96,10 +97,10 @@ image.paste(qrImage, (0,0))
 image.save("result.png", "PNG")
 disp.image(image)
 drawBuffer()
-GPIO.wait_for_edge(27, buttonEdge)
-GPIO.cleanup(17)
+GPIO.wait_for_edge(gpioButtons[0], buttonEdge)
+GPIO.cleanup(gpioButtons[4])
 print(GPIO.VERSION)
-GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+GPIO.setup(gpioButtons[4], GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 #------------------------CAMERA---------------------------
 camera = PiCamera()
 previewOnStartup = True
@@ -163,7 +164,7 @@ def startTimeLapse(duration, interval, raw):
                 writeStringToBuffer(2, str(interval-i))
                 drawBuffer()
         else:
-            while not GPIO.input(23):
+            while not GPIO.input(gpioButtons[1]):
                 sleep(0.01)
 
     clearBuffer()
@@ -174,7 +175,7 @@ def startTimeLapse(duration, interval, raw):
 
     #should shut down when quit is helt
     while True:
-        if GPIO.input(27):
+        if GPIO.input(gpioButtons[0]):
             writeStringToBuffer(2.5,'shutting down.')
             drawBuffer()
             shutdown()
@@ -185,7 +186,7 @@ def startStopMotion(duration, interval, raw):
 menuItems = ['Duration', 'Interval', 'Shutter Speed','save raw data', 'start lapse', 'start stop-motion']
 # unit, [min, step, max, default/current] (for float/int values)
 # unit, [possibleString1, possibleString2, ...] (for string values)
-# unit, [actionString, function] (for calling (a) function)
+# unit, [actionString, function] (for calling a function)
 menuChoices = [ ['hrs', [1,1,48,1]], ['sec', [2,2,120,30]], ['sec', ['1/1000', '1/500','1/250', '1/125', '1/60', '1/60', '1/30', '1/15', '1/8', '1/4', '1/2', '1', '2', '4', 6]], ['', ['Yes','No', 0]], ['', ['I\'m ready', startTimeLapse]], ['', ['I\'m ready', startStopMotion]] ]
 menu = lcdMenu.timeLapseMenu(menuItems, menuChoices, disp, draw, image, font, camera)
 menu.home()
@@ -193,19 +194,19 @@ menu.home()
 #--------------------INTERRUPTS (buttons)--------------------
 def quitButton(channel = False):
     global quitButtonPressTime, quitButtonPressed
-    if GPIO.input(17):
+    if GPIO.input(gpioButtons[0]):
         #pressed
         quitButtonPressed = True
         quitButtonPressTime = time()
-        if debug: print("QUIT Pressed at", quitButtonPressTime)
+        if debug: print("gpioButtons[0] Pressed at", quitButtonPressTime)
     else:
         #released
         quitButtonPressed = False
-        if debug: print("QUIT released at", time())
+        if debug: print("gpioButtons[0] released at", time())
 
 def leftButton(channel = False):
     global leftButtonPressTime, leftButtonPressed
-    if GPIO.input(23):
+    if GPIO.input(gpioButtons[1]):
         #pressed
         leftButtonPressed = True
         if debug: print('< button pressed')
@@ -217,7 +218,7 @@ def leftButton(channel = False):
 
 def rightButton(channel = False):
     global rightButtonPressTime, rightButtonPressed
-    if GPIO.input(4):
+    if GPIO.input(gpioButtons[2]):
         #pressed
         rightButtonPressed = True
         if debug: print('> button pressed')
@@ -241,11 +242,11 @@ def shutdown():
     output = process.communicate()[0]
     print(output)
 
-GPIO.add_event_detect(17, GPIO.BOTH, callback=quitButton, bouncetime=300)
-GPIO.add_event_detect(23, GPIO.BOTH, callback=leftButton, bouncetime=300)
-GPIO.add_event_detect(4, GPIO.BOTH, callback=rightButton, bouncetime=300)
-GPIO.add_event_detect(22, buttonEdge, callback=backButton, bouncetime=300)
-GPIO.add_event_detect(27, buttonEdge, callback=enterButton, bouncetime=300)
+GPIO.add_event_detect(gpioButtons[0], GPIO.BOTH, callback=quitButton, bouncetime=300)
+GPIO.add_event_detect(gpioButtons[1], GPIO.BOTH, callback=leftButton, bouncetime=300)
+GPIO.add_event_detect(gpioButtons[2], GPIO.BOTH, callback=rightButton, bouncetime=300)
+GPIO.add_event_detect(gpioButtons[3], buttonEdge, callback=backButton, bouncetime=300)
+GPIO.add_event_detect(gpioButtons[4], buttonEdge, callback=enterButton, bouncetime=300)
 
 def digits(n):
     x = 0
