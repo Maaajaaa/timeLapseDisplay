@@ -154,7 +154,7 @@ class timeLapseMenu:
         #self.lcd.cursor_pos = (1,0)
         if type(self.choices[itemID][1][0]) is str:
             if type(self.choices[itemID][1][1]) is str:
-                currentElementID = len(self.choices[2][1]) - 1
+                currentElementID = len(self.choices[itemID][1]) - 1
                 self.writeStringToBuffer(1,self.choices[itemID][1][self.choices[itemID][1][currentElementID]], aligment = 'left')
             if callable(self.choices[itemID][1][1]):
                 useless = True
